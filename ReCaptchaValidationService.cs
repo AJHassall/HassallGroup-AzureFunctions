@@ -1,9 +1,11 @@
+using System.Net.Http.Json;
+
 namespace HassallGroup.Function
 {
     public class ReCaptchaValidationService{
 
         private const string RECAPTCHA_VERIFICATION_URL = "https://www.google.com/recaptcha/api/siteverify";
-        public static async Task<bool> VerifyReCaptchaAsync(string token)
+        public async Task<bool> VerifyReCaptchaAsync(string token)
         {
 
             string recaptchaKey = Environment.GetEnvironmentVariable("RECAPTCHA_KEY");

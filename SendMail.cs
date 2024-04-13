@@ -1,7 +1,10 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Azure;
+using Azure.Communication.Email;
 
 namespace HassallGroup.Function
 {
@@ -17,16 +20,16 @@ namespace HassallGroup.Function
         }
 
         [Function("SendMail")]
-        public IActionResult Run([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req)
+        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req)
         {
 
-            body = await JsonSerializer.DeserializeAsync<FormBody>(req.Body);
+            FormBody body = await JsonSerializer.DeserializeAsync<FormBody>(req.Body);
 
-            bool isHuman = _reCaptchaValidationService.SendMail(body.token);
+            bool isHuman = await _reCaptchaValidationService.VerifyReCaptchaAsync(body.Token);
 
-            if (!isHuman)
+            if (isHuman)
             {
-                return new BadObjectResult("reCaptcha failed");
+                return new BadRequestObjectResult("reCaptcha failed");
             }
 
             string connectionString = Environment.GetEnvironmentVariable("COMMUNICATION_SERVICES_CONNECTION_STRING");
@@ -40,19 +43,19 @@ namespace HassallGroup.Function
                 WaitUntil.Completed,
                 senderAddress: senderAddress,
                 recipientAddress: recipientAddress,
-                subject: body.Data.subject,
+                subject: "body.Data.Subject",
                 htmlContent: 
                 $"""
                     <html>
-                        <p>Client Name: {name}.</p>
-                        <p>Subject:     {subject}</p>
-                        <p>Message:     {message}</p>
+                        <p>Client Name: {"body.Data.Name"}.</p>
+                        <p>Subject:     {"body.Data.Subject"}</p>
+                        <p>Message:     {"body.Data.Message"}</p>
                     </html>
                 """,
                 plainTextContent: $"""
-                        Client Name: {name}.
-                        Subject:     {subject}
-                        Message:     {message}
+                        Client Name: {"body.Data.Name"}.
+                        Subject:     {"body.Data.Subject"}
+                        Message:     {"body.Data.Message"}
                 """);
 
             _logger.LogInformation("C# HTTP trigger function processed a request.");
@@ -64,7 +67,15 @@ namespace HassallGroup.Function
         //       data: { name, email, subject, message },
          //      token,
 
-        public object Data;
+        public Data Data;
         public string Token;
+    }
+        public class Data{
+        //       data: { name, email, subject, message },
+         //      token,
+
+        public string Name;
+        public string Subject; 
+        public string Message; 
     }
 }
